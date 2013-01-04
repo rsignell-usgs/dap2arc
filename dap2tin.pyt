@@ -2,6 +2,7 @@ import arcpy
 import os
 import netCDF4
 import numpy as np
+import pyproj
 
 def DefineProjectionForTin(tin,prj):
 # workaround for a bug - define a projection for a TIN
@@ -127,6 +128,18 @@ class Dap2tin(object):
         prj = "GEOGCS['GCS_WGS_1984',DATUM['D_WGS_1984',"\
              "SPHEROID['WGS_1984',6378137.0,298.257223563]],"\
              "PRIMEM['Greenwich',0.0],UNIT['Degree',0.0174532925199433]]"
+             
+        prj = "PROJCS['NAD83 / Massachusetts Mainland',"\
+             "GEOGCS['GCS_North_American_1983',DATUM['D_North_American_1983',"\
+             "SPHEROID['GRS_1980',6378137,298.257222101]],"\
+             "PRIMEM['Greenwich',0],UNIT['Degree',0.017453292519943295]],"\
+             "PROJECTION['Lambert_Conformal_Conic'],"\
+             "PARAMETER['standard_parallel_1',42.68333333333333],"\
+             "PARAMETER['standard_parallel_2',41.71666666666667],"\
+             "PARAMETER['latitude_of_origin',41],"\
+             "PARAMETER['central_meridian',-71.5],"\
+             "PARAMETER['false_easting',200000],"\
+             "PARAMETER['false_northing',750000],UNIT['Meter',1]]"
         arcpy.env.outputCoordinateSystem = prj
 
         # output location
@@ -139,8 +152,13 @@ class Dap2tin(object):
         arcpy.AddMessage((repr(dataset_var)))
 
         nc = netCDF4.Dataset(url)
-        x = nc.variables['lon'][:]
-        y = nc.variables['lat'][:]
+        lon = nc.variables['lon'][:]
+        lat = nc.variables['lat'][:]
+        # convert lon/lat to Mass State Plane
+        p1 = pyproj.Proj(init='epsg:4326')   # geographic WGS84
+        p2 = pyproj.Proj(init='epsg:26986') # Mass State Plane   
+        x,y = pyproj.transform(p1,p2,lon,lat)
+        
         # read water depth at nodes
         h = nc.variables[dataset_var][itime,klev,:]
         # read connectivity array
