@@ -125,21 +125,25 @@ class Dap2tin(object):
         itime = int(parameters[2].valueAsText)
         klev = int(parameters[3].valueAsText)
         outTin = parameters[4].valueAsText
+        
+        #ESRI WKT for Geographic, WGS84 (EPSG:4326)
         prj = "GEOGCS['GCS_WGS_1984',DATUM['D_WGS_1984',"\
              "SPHEROID['WGS_1984',6378137.0,298.257223563]],"\
              "PRIMEM['Greenwich',0.0],UNIT['Degree',0.0174532925199433]]"
              
-        prj = "PROJCS['NAD83 / Massachusetts Mainland',"\
+        #ESRI WKT for Massachusetts state plane, mainland (EPSG:26986)         
+        prj = "PROJCS['NAD_1983_StatePlane_Massachusetts_Mainland_FIPS_2001',"\
              "GEOGCS['GCS_North_American_1983',DATUM['D_North_American_1983',"\
-             "SPHEROID['GRS_1980',6378137,298.257222101]],"\
-             "PRIMEM['Greenwich',0],UNIT['Degree',0.017453292519943295]],"\
+             "SPHEROID['GRS_1980',6378137.0,298.257222101]],"\
+             "PRIMEM['Greenwich',0.0],UNIT['Degree',0.0174532925199433]],"\
              "PROJECTION['Lambert_Conformal_Conic'],"\
-             "PARAMETER['standard_parallel_1',42.68333333333333],"\
-             "PARAMETER['standard_parallel_2',41.71666666666667],"\
-             "PARAMETER['latitude_of_origin',41],"\
-             "PARAMETER['central_meridian',-71.5],"\
-             "PARAMETER['false_easting',200000],"\
-             "PARAMETER['false_northing',750000],UNIT['Meter',1]]"
+             "PARAMETER['False_Easting',200000.0],"\
+             "PARAMETER['False_Northing',750000.0],"\
+             "PARAMETER['Central_Meridian',-71.5],"\
+             "PARAMETER['Standard_Parallel_1',41.71666666666667],"\
+             "PARAMETER['Standard_Parallel_2',42.68333333333333],"\
+             "PARAMETER['Latitude_Of_Origin',41.0],UNIT['Meter',1.0]]"
+
         arcpy.env.outputCoordinateSystem = prj
 
         # output location
@@ -152,12 +156,13 @@ class Dap2tin(object):
         arcpy.AddMessage((repr(dataset_var)))
 
         nc = netCDF4.Dataset(url)
-        lon = nc.variables['lon'][:]
-        lat = nc.variables['lat'][:]
-        # convert lon/lat to Mass State Plane
+        x = nc.variables['lon'][:]
+        y = nc.variables['lat'][:]
+        
+        # convert Lon/Lat to Mass State Plane using PyProj(Proj4)
         p1 = pyproj.Proj(init='epsg:4326')   # geographic WGS84
         p2 = pyproj.Proj(init='epsg:26986') # Mass State Plane   
-        x,y = pyproj.transform(p1,p2,lon,lat)
+        x,y = pyproj.transform(p1,p2,x,y)
         
         # read water depth at nodes
         h = nc.variables[dataset_var][itime,klev,:]
@@ -186,9 +191,10 @@ class Dap2tin(object):
          <Surfaces>
           <Surface name="FVCOM_GOM2_Grid">
         '''
-        # name of temporary LandXML file
+        # Name of temporary LandXML file
         xmlTemp = os.path.normpath(os.path.join(arcpy.env.workspace,"foo.xml"))
         arcpy.AddMessage("Writing LandXML file %s" % xmlTemp)
+        # Write the LandXML file 
         f = open(xmlTemp, 'w')
         f.write(xml_header)
         f.write('<Definition surfType=\"TIN\" elevMin=\"%f\" elevMax=\"%f\">\n' % \
@@ -211,9 +217,7 @@ class Dap2tin(object):
         f.write(xml_trailer)
         f.close()
 
-        arcpy.AddMessage("Temporary LandXML file written")
-
-        arcpy.AddMessage("Converting to TIN...")
+        arcpy.AddMessage("Converting LandXML to TIN...")
         grab = "1"  # grab the 1st TIN (there is only 1 TIN)
         arcpy.LandXMLToTin_3d(xmlTemp,outputFolder,outputBase,grab)
 
