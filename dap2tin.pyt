@@ -5,10 +5,12 @@ import numpy as np
 import pyproj
 
 def DefineProjectionForTin(tin,prj):
-# workaround for a bug - define a projection for a TIN
-# 1. Create a temporary raster
-# 2. Define its projection
-# 3. Copy the prj.adf file to the TIN
+    '''Workaround for Arc bug - define a projection for a TIN
+    1. Create a temporary raster
+    2. Define its projection
+    3. Copy the prj.adf file to the TIN
+    
+    '''
     import os
     import shutil
     import arcpy
@@ -19,6 +21,61 @@ def DefineProjectionForTin(tin,prj):
     shutil.copyfile(os.path.join(tempGrid,"prj.adf"),
                     os.path.join(tin,"prj.adf"))
     arcpy.Delete_management(tempGrid)
+    
+def writeLandXML(nv,x,y,h,xmlTemp):
+    '''Write TIN components to a LandXML file.
+
+    Arguments:
+    nv = 3 column connectivity array
+    x = x locations of triangle nodes
+    y = y locations of triangle nodes
+    h = the data value at the triangle nodes
+    xmlTemp = the full path of the XML file to be written
+    
+    '''
+    nnodes = len(h)
+    nele,three = np.shape(nv)
+    # Write the LandXML file 
+    f = open(xmlTemp, 'w')        
+    xml_header = '''<?xml version="1.0"?>
+    <LandXML version="1.1" date="2008-06-09" time="08:33:4"
+     xmlns="http://www.landxml.org/schema/LandXML-1.1"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="http://www.landxml.org/schema/LandXML-1.1 http://www.landxml.org/schema/LandXML-1.1/LandXML-1.1.xsd">
+     <Units>
+      <Metric areaUnit="squareMeter" linearUnit="meter" volumeUnit="cubicMeter"
+       temperatureUnit="celsius" pressureUnit="milliBars"/>
+     </Units>
+     <Application name="FVCOM" version="10.2.0 (Build 400)" manufacturer="SMAST"
+      manufacturerURL="http://fvcom.smast.umassd.edu/FVCOM/index.html"><Author createdBy="rsignell"/></Application>
+
+
+     <Surfaces>
+      <Surface name="FVCOM_GOM2_Grid">
+    '''
+
+
+    f.write(xml_header)
+    f.write('<Definition surfType=\"TIN\" elevMin=\"%f\" elevMax=\"%f\">\n' % \
+            (min(h[:]), max(h[:])))
+    f.write('<Pnts>\n')
+    Lines = ['<P id=\"%d\"> %f %f %f </P>\n' % \
+            (i+1, y[i], x[i], h[i]) for i in range(nnodes)]
+    f.writelines(Lines)
+    f.write('</Pnts>\n')
+    f.write('<Faces>\n')
+    Lines = ['<F> %d %d %d </F>\n' % \
+            (nv[i,0], nv[i,1], nv[i,2]) for i in range(nele)]
+    f.writelines(Lines)
+    xml_trailer = '''    </Faces>
+       </Definition>
+      </Surface>
+     </Surfaces>
+    </LandXML>
+    '''
+    f.write(xml_trailer)
+    f.close()
+
 
 class Toolbox(object):
     def __init__(self):
@@ -126,13 +183,15 @@ class Dap2tin(object):
         klev = int(parameters[3].valueAsText)
         outTin = parameters[4].valueAsText
         
+        # create dictionary for WKT strings
+        prj={}
         #ESRI WKT for Geographic, WGS84 (EPSG:4326)
-        prj = "GEOGCS['GCS_WGS_1984',DATUM['D_WGS_1984',"\
+        prj['4326'] = "GEOGCS['GCS_WGS_1984',DATUM['D_WGS_1984',"\
              "SPHEROID['WGS_1984',6378137.0,298.257223563]],"\
              "PRIMEM['Greenwich',0.0],UNIT['Degree',0.0174532925199433]]"
              
         #ESRI WKT for Massachusetts state plane, mainland (EPSG:26986)         
-        prj = "PROJCS['NAD_1983_StatePlane_Massachusetts_Mainland_FIPS_2001',"\
+        prj['26986'] = "PROJCS['NAD_1983_StatePlane_Massachusetts_Mainland_FIPS_2001',"\
              "GEOGCS['GCS_North_American_1983',DATUM['D_North_American_1983',"\
              "SPHEROID['GRS_1980',6378137.0,298.257222101]],"\
              "PRIMEM['Greenwich',0.0],UNIT['Degree',0.0174532925199433]],"\
@@ -144,7 +203,7 @@ class Dap2tin(object):
              "PARAMETER['Standard_Parallel_2',42.68333333333333],"\
              "PARAMETER['Latitude_Of_Origin',41.0],UNIT['Meter',1.0]]"
 
-        arcpy.env.outputCoordinateSystem = prj
+        arcpy.env.outputCoordinateSystem = prj['26986']
 
         # output location
         outputFolder= os.path.dirname(outTin)
@@ -171,51 +230,14 @@ class Dap2tin(object):
         nv=nv.T
         nc.close()
 
-        nnodes = len(h)
-        nele,three = np.shape(nv)
 
 
-        xml_header = '''<?xml version="1.0"?>
-        <LandXML version="1.1" date="2008-06-09" time="08:33:4"
-         xmlns="http://www.landxml.org/schema/LandXML-1.1"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://www.landxml.org/schema/LandXML-1.1 http://www.landxml.org/schema/LandXML-1.1/LandXML-1.1.xsd">
-         <Units>
-          <Metric areaUnit="squareMeter" linearUnit="meter" volumeUnit="cubicMeter"
-           temperatureUnit="celsius" pressureUnit="milliBars"/>
-         </Units>
-         <Application name="FVCOM" version="10.2.0 (Build 400)" manufacturer="SMAST"
-          manufacturerURL="http://fvcom.smast.umassd.edu/FVCOM/index.html"><Author createdBy="rsignell"/></Application>
-
-
-         <Surfaces>
-          <Surface name="FVCOM_GOM2_Grid">
-        '''
         # Name of temporary LandXML file
         xmlTemp = os.path.normpath(os.path.join(arcpy.env.workspace,"foo.xml"))
         arcpy.AddMessage("Writing LandXML file %s" % xmlTemp)
-        # Write the LandXML file 
-        f = open(xmlTemp, 'w')
-        f.write(xml_header)
-        f.write('<Definition surfType=\"TIN\" elevMin=\"%f\" elevMax=\"%f\">\n' % \
-                (min(h[:]), max(h[:])))
-        f.write('<Pnts>\n')
-        Lines = ['<P id=\"%d\"> %f %f %f </P>\n' % \
-                (i+1, y[i], x[i], h[i]) for i in range(nnodes)]
-        f.writelines(Lines)
-        f.write('</Pnts>\n')
-        f.write('<Faces>\n')
-        Lines = ['<F> %d %d %d </F>\n' % \
-                (nv[i,0], nv[i,1], nv[i,2]) for i in range(nele)]
-        f.writelines(Lines)
-        xml_trailer = '''    </Faces>
-           </Definition>
-          </Surface>
-         </Surfaces>
-        </LandXML>
-        '''
-        f.write(xml_trailer)
-        f.close()
+
+        # Write the LandXML file
+        writeLandXML(nv,x,y,h,xmlTemp)
 
         arcpy.AddMessage("Converting LandXML to TIN...")
         grab = "1"  # grab the 1st TIN (there is only 1 TIN)
@@ -224,7 +246,7 @@ class Dap2tin(object):
         #params = arcpy.GetParameterInfo()
         #arcpy.AddMessage("parameter info %s" % params)
 
-        DefineProjectionForTin(outTin,prj)
+        DefineProjectionForTin(outTin,prj['26986'])
         arcpy.AddMessage(arcpy.GetMessages())
         #arcpy.DefineProjection_management(outTin,dataPrj) # not working!        
         return
