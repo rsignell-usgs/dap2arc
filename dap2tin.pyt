@@ -105,7 +105,12 @@ class Dap2tin(object):
             direction="Input")	
         # set default value to 30 year hindcast monthly mean dataset
         url.value = 'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/hindcasts/30yr_gom3/mean'
-
+        url.filter.type = "ValueList"
+        url.filter.list = ['http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/hindcasts/30yr_gom3/mean',
+        'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/archives/necofs_gom3',
+        'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/archives/necofs_mb',
+        'http://www.smast.umassd.edu:8080/thredds/dodsC/FVCOM/NECOFS/Forecasts/NECOFS_GOM3_FORECAST.nc',
+        'http://www.smast.umassd.edu:8080/thredds/dodsC/FVCOM/NECOFS/Forecasts/NECOFS_FVCOM_OCEAN_MASSBAY_FORECAST.nc']
         dataset_var = arcpy.Parameter(
             displayName="Variable",
             name="dataset_var",
@@ -229,8 +234,6 @@ class Dap2tin(object):
         nv = nc.variables['nv'][:,:]
         nv=nv.T
         nc.close()
-
-
 
         # Name of temporary LandXML file
         xmlTemp = os.path.normpath(os.path.join(arcpy.env.workspace,"foo.xml"))
