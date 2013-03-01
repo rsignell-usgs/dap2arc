@@ -97,6 +97,8 @@ class Dap2tin(object):
 
     def getParameterInfo(self):
         """Define parameter definitions"""
+        
+        # Parameter: URL
         url = arcpy.Parameter(
             displayName="OPeNDAP URL",
             name="url",
@@ -111,6 +113,8 @@ class Dap2tin(object):
         'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/archives/necofs_mb',
         'http://www.smast.umassd.edu:8080/thredds/dodsC/FVCOM/NECOFS/Forecasts/NECOFS_GOM3_FORECAST.nc',
         'http://www.smast.umassd.edu:8080/thredds/dodsC/FVCOM/NECOFS/Forecasts/NECOFS_FVCOM_OCEAN_MASSBAY_FORECAST.nc']
+ 
+        # Parameter: Variable name
         dataset_var = arcpy.Parameter(
             displayName="Variable",
             name="dataset_var",
@@ -122,6 +126,7 @@ class Dap2tin(object):
         dataset_var.filter.type = "ValueList"
         dataset_var.filter.list = ["temp","salinity"]
         
+        # Parameter: Time step
         itime = arcpy.Parameter(
             displayName="Time Step (First time step is 0)",
             name="itime",
@@ -130,6 +135,8 @@ class Dap2tin(object):
             direction="Input")	
         # set default value to 2nd time step
         itime.value = 1
+
+        # Parameter: Level
         klev = arcpy.Parameter(
             displayName="Vertical layer (0 is surface, -1 is bottom)",
             name="klev",
@@ -139,6 +146,7 @@ class Dap2tin(object):
         # set default value to surface layer
         klev.value = 0
 		
+        # Parameter: Output Tin
         outTin = arcpy.Parameter(
             displayName="Output TIN",
             name="outTin",
@@ -147,6 +155,8 @@ class Dap2tin(object):
             direction="Output")	
 	    # set default name of output TIN
         outTin.value = 'c:/rps/python/tins/necofs'
+
+        
         # set location of layer files
         layer_dir = 'c:/users/rsignell/documents/github/dap2arc/'
         if dataset_var.value == "temp":
@@ -228,7 +238,7 @@ class Dap2tin(object):
         p2 = pyproj.Proj(init='epsg:26986') # Mass State Plane   
         x,y = pyproj.transform(p1,p2,x,y)
         
-        # read water depth at nodes
+        # read data at nodes for selected variable
         h = nc.variables[dataset_var][itime,klev,:]
         # read connectivity array
         nv = nc.variables['nv'][:,:]
