@@ -269,9 +269,9 @@ class Dap2tin(object):
         x = nc.variables['lon'][:]
         y = nc.variables['lat'][:]
         times = nc.variables['time']
-        jd = netCDF4.num2date(times[:],times.units)
-        start = dt.datetime(iyear,iday,imonth,ihour)
+        start = dt.datetime(iyear,imonth,iday,ihour)
         itime = netCDF4.date2index(start,times,select='nearest')
+        arcpy.AddMessage("Reading time step %d" % itime)
         
         # convert Lon/Lat to Mass State Plane using PyProj(Proj4)
         p1 = pyproj.Proj(init='epsg:4326')   # geographic WGS84
