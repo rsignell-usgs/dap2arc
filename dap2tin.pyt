@@ -4,6 +4,7 @@ import netCDF4
 import numpy as np
 import pyproj
 import datetime as dt
+import shutil
 
 def DefineProjectionForTin(tin,prj):
     '''Workaround for Arc bug - define a projection for a TIN
@@ -12,9 +13,6 @@ def DefineProjectionForTin(tin,prj):
     3. Copy the prj.adf file to the TIN
     
     '''
-    import os
-    import shutil
-    import arcpy
     wks = os.path.dirname(tin)
     tempGrid = arcpy.CreateScratchName("xx","","RasterDataset",wks)
     arcpy.CreateRasterDataset_management(wks,os.path.basename(tempGrid))
@@ -110,6 +108,7 @@ class Dap2tin(object):
         url.value = 'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/hindcasts/30yr_gom3/mean'
         url.filter.type = "ValueList"
         url.filter.list = ['http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/hindcasts/30yr_gom3/mean',
+        'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/hindcasts/wave_gom3',
         'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/archives/necofs_gom3',
         'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/archives/necofs_mb',
         'http://www.smast.umassd.edu:8080/thredds/dodsC/FVCOM/NECOFS/Forecasts/NECOFS_GOM3_FORECAST.nc',
@@ -125,7 +124,7 @@ class Dap2tin(object):
         # set default value to temperature
         dataset_var.value = 'temp'
         dataset_var.filter.type = "ValueList"
-        dataset_var.filter.list = ["temp","salinity"]
+        dataset_var.filter.list = ["temp","salinity","hs","h"]
         
         # Parameter: Year
         iyear = arcpy.Parameter(
@@ -194,6 +193,8 @@ class Dap2tin(object):
             outTin.symbology = layer_dir + 'temperature.lyr'
         elif dataset_var.value == "salinity":
             outTin.symbology = layer_dir + 'salinity.lyr'
+        elif dataset_var.value == "hs":
+            outTin.symbology = layer_dir + 'wave_height.lyr'
         else:
             outTin.symbology = layer_dir + 'temperature.lyr'
             
@@ -268,10 +269,16 @@ class Dap2tin(object):
         nc = netCDF4.Dataset(url)
         x = nc.variables['lon'][:]
         y = nc.variables['lat'][:]
+        
+        # determine time step from [year,month,day,hour]
         times = nc.variables['time']
         start = dt.datetime(iyear,imonth,iday,ihour)
         itime = netCDF4.date2index(start,times,select='nearest')
         arcpy.AddMessage("Reading time step %d" % itime)
+        
+        # read connectivity array
+        nv = nc.variables['nv'][:,:]
+        nv=nv.T
         
         # convert Lon/Lat to Mass State Plane using PyProj(Proj4)
         p1 = pyproj.Proj(init='epsg:4326')   # geographic WGS84
@@ -279,10 +286,18 @@ class Dap2tin(object):
         x,y = pyproj.transform(p1,p2,x,y)
         
         # read data at nodes for selected variable
-        h = nc.variables[dataset_var][itime,klev,:]
-        # read connectivity array
-        nv = nc.variables['nv'][:,:]
-        nv=nv.T
+        # handle 1D, 2D, and 3D variables
+        hvar = nc.variables[dataset_var]
+        numdims = len(hvar.dimensions)
+        if numdims==3:   # time, level, node (e.g. temperature 'temp')
+            h = nc.variables[dataset_var][itime,klev,:]
+        elif numdims==2: # time, node (e.g. water level 'zeta')
+            h = nc.variables[dataset_var][itime,:]
+        elif numdims==1: # node (e.g. water depth 'h')
+            h = nc.variables[dataset_var][:]
+        else:
+            arcpy.AddMessage("Variable %s has %d dimensions" % (dataset_var,numdims))
+            raise Exception
         nc.close()
 
         # Name of temporary LandXML file
