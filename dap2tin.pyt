@@ -3,6 +3,7 @@ import os
 import netCDF4
 import numpy as np
 import pyproj
+import datetime as dt
 
 def DefineProjectionForTin(tin,prj):
     '''Workaround for Arc bug - define a projection for a TIN
@@ -126,15 +127,45 @@ class Dap2tin(object):
         dataset_var.filter.type = "ValueList"
         dataset_var.filter.list = ["temp","salinity"]
         
-        # Parameter: Time step
-        itime = arcpy.Parameter(
-            displayName="Time Step (First time step is 0)",
-            name="itime",
+        # Parameter: Year
+        iyear = arcpy.Parameter(
+            displayName="Year",
+            name="iyear",
+            datatype="Long",
+            parameterType="Required",
+            direction="Input")	           
+        # set default value to 2nd time step
+        iyear.value = 2010
+        
+        # Parameter: Month
+        imonth = arcpy.Parameter(
+            displayName="Month",
+            name="imonth",
             datatype="Long",
             parameterType="Required",
             direction="Input")	
         # set default value to 2nd time step
-        itime.value = 1
+        imonth.value = 1
+        
+        # Parameter: Day
+        iday = arcpy.Parameter(
+            displayName="Day",
+            name="iday",
+            datatype="Long",
+            parameterType="Required",
+            direction="Input")	
+        # set default value to 2nd time step
+        iday.value = 1
+        
+        # Parameter: Hour
+        ihour = arcpy.Parameter(
+            displayName="Hour",
+            name="ihour",
+            datatype="Long",
+            parameterType="Required",
+            direction="Input")	
+        # set default value to 2nd time step
+        ihour.value = 0
 
         # Parameter: Level
         klev = arcpy.Parameter(
@@ -165,7 +196,8 @@ class Dap2tin(object):
             outTin.symbology = layer_dir + 'salinity.lyr'
         else:
             outTin.symbology = layer_dir + 'temperature.lyr'
-        return [url, dataset_var, itime, klev, outTin]
+            
+        return [url, dataset_var, iyear,imonth,iday,ihour, klev, outTin]
 
 	def isLicensed(self):
 		"""LandXMLToTin_3d used in this routine requires the ArcGIS 3D Analyst extension 
@@ -194,9 +226,13 @@ class Dap2tin(object):
     def execute(self, parameters, messages):
         url = parameters[0].valueAsText
         dataset_var = parameters[1].valueAsText 
-        itime = int(parameters[2].valueAsText)
-        klev = int(parameters[3].valueAsText)
-        outTin = parameters[4].valueAsText
+        iyear = int(parameters[2].valueAsText)
+        imonth = int(parameters[3].valueAsText)
+        iday = int(parameters[4].valueAsText)
+        ihour = int(parameters[5].valueAsText)
+                      
+        klev = int(parameters[6].valueAsText)
+        outTin = parameters[7].valueAsText
         
         # create dictionary for WKT strings
         prj={}
@@ -232,6 +268,10 @@ class Dap2tin(object):
         nc = netCDF4.Dataset(url)
         x = nc.variables['lon'][:]
         y = nc.variables['lat'][:]
+        times = nc.variables['time']
+        jd = netCDF4.num2date(times[:],times.units)
+        start = dt.datetime(iyear,iday,imonth,ihour)
+        itime = netCDF4.date2index(start,times,select='nearest')
         
         # convert Lon/Lat to Mass State Plane using PyProj(Proj4)
         p1 = pyproj.Proj(init='epsg:4326')   # geographic WGS84
