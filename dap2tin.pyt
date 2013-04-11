@@ -11,7 +11,7 @@ def DefineProjectionForTin(tin,prj):
     1. Create a temporary raster
     2. Define its projection
     3. Copy the prj.adf file to the TIN
-    
+
     '''
     wks = os.path.dirname(tin)
     tempGrid = arcpy.CreateScratchName("xx","","RasterDataset",wks)
@@ -20,7 +20,7 @@ def DefineProjectionForTin(tin,prj):
     shutil.copyfile(os.path.join(tempGrid,"prj.adf"),
                     os.path.join(tin,"prj.adf"))
     arcpy.Delete_management(tempGrid)
-    
+
 def writeLandXML(nv,x,y,h,xmlTemp):
     '''Write TIN components to a LandXML file.
 
@@ -30,12 +30,12 @@ def writeLandXML(nv,x,y,h,xmlTemp):
     y = y locations of triangle nodes
     h = the data value at the triangle nodes
     xmlTemp = the full path of the XML file to be written
-    
+
     '''
     nnodes = len(h)
     nele,three = np.shape(nv)
-    # Write the LandXML file 
-    f = open(xmlTemp, 'w')        
+    # Write the LandXML file
+    f = open(xmlTemp, 'w')
     xml_header = '''<?xml version="1.0"?>
     <LandXML version="1.1" date="2008-06-09" time="08:33:4"
      xmlns="http://www.landxml.org/schema/LandXML-1.1"
@@ -96,14 +96,14 @@ class Dap2tin(object):
 
     def getParameterInfo(self):
         """Define parameter definitions"""
-        
+
         # Parameter: URL
         url = arcpy.Parameter(
             displayName="OPeNDAP URL",
             name="url",
             datatype="String",
             parameterType="Required",
-            direction="Input")	
+            direction="Input")
         # set default value to 30 year hindcast monthly mean dataset
         url.value = 'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/hindcasts/30yr_gom3/mean'
         url.filter.type = "ValueList"
@@ -113,56 +113,56 @@ class Dap2tin(object):
         'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/archives/necofs_mb',
         'http://www.smast.umassd.edu:8080/thredds/dodsC/FVCOM/NECOFS/Forecasts/NECOFS_GOM3_FORECAST.nc',
         'http://www.smast.umassd.edu:8080/thredds/dodsC/FVCOM/NECOFS/Forecasts/NECOFS_FVCOM_OCEAN_MASSBAY_FORECAST.nc']
- 
+
         # Parameter: Variable name
         dataset_var = arcpy.Parameter(
             displayName="Variable",
             name="dataset_var",
             datatype="String",
             parameterType="Required",
-            direction="Input")	
+            direction="Input")
         # set default value to temperature
         dataset_var.value = 'temp'
         dataset_var.filter.type = "ValueList"
         dataset_var.filter.list = ["temp","salinity","hs","h"]
-        
+
         # Parameter: Year
         iyear = arcpy.Parameter(
             displayName="Year",
             name="iyear",
             datatype="Long",
             parameterType="Required",
-            direction="Input")	           
+            direction="Input")
         # set default value to 2nd time step
         iyear.value = 2010
-        
+
         # Parameter: Month
         imonth = arcpy.Parameter(
             displayName="Month",
             name="imonth",
             datatype="Long",
             parameterType="Required",
-            direction="Input")	
+            direction="Input")
         # set default value to 2nd time step
         imonth.value = 1
-        
+
         # Parameter: Day
         iday = arcpy.Parameter(
             displayName="Day",
             name="iday",
             datatype="Long",
             parameterType="Required",
-            direction="Input")	
+            direction="Input")
         # set default value to 2nd time step
         iday.value = 1
-        
+
         # Parameter: Hour
         ihour = arcpy.Parameter(
             displayName="Hour",
             name="ihour",
             datatype="Long",
             parameterType="Required",
-            direction="Input")	
+            direction="Input")
         # set default value to 2nd time step
         ihour.value = 0
 
@@ -172,21 +172,21 @@ class Dap2tin(object):
             name="klev",
             datatype="Long",
             parameterType="Required",
-            direction="Input")	
+            direction="Input")
         # set default value to surface layer
         klev.value = 0
-		
+
         # Parameter: Output Tin
         outTin = arcpy.Parameter(
             displayName="Output TIN",
             name="outTin",
             datatype="TIN",
             parameterType="Required",
-            direction="Output")	
+            direction="Output")
 	    # set default name of output TIN
         outTin.value = 'c:/rps/python/tins/necofs'
 
-        
+
         # set location of layer files
         layer_dir = 'c:/users/rsignell/documents/github/dap2arc/'
         if dataset_var.value == "temp":
@@ -197,11 +197,11 @@ class Dap2tin(object):
             outTin.symbology = layer_dir + 'wave_height.lyr'
         else:
             outTin.symbology = layer_dir + 'temperature.lyr'
-            
+
         return [url, dataset_var, iyear,imonth,iday,ihour, klev, outTin]
 
 	def isLicensed(self):
-		"""LandXMLToTin_3d used in this routine requires the ArcGIS 3D Analyst extension 
+		"""LandXMLToTin_3d used in this routine requires the ArcGIS 3D Analyst extension
 		to be available."""
 		try:
 			if arcpy.CheckExtension("3D") == "Available":
@@ -226,23 +226,23 @@ class Dap2tin(object):
 
     def execute(self, parameters, messages):
         url = parameters[0].valueAsText
-        dataset_var = parameters[1].valueAsText 
+        dataset_var = parameters[1].valueAsText
         iyear = int(parameters[2].valueAsText)
         imonth = int(parameters[3].valueAsText)
         iday = int(parameters[4].valueAsText)
         ihour = int(parameters[5].valueAsText)
-                      
+
         klev = int(parameters[6].valueAsText)
         outTin = parameters[7].valueAsText
-        
+
         # create dictionary for WKT strings
         prj={}
         #ESRI WKT for Geographic, WGS84 (EPSG:4326)
         prj['4326'] = "GEOGCS['GCS_WGS_1984',DATUM['D_WGS_1984',"\
              "SPHEROID['WGS_1984',6378137.0,298.257223563]],"\
              "PRIMEM['Greenwich',0.0],UNIT['Degree',0.0174532925199433]]"
-             
-        #ESRI WKT for Massachusetts state plane, mainland (EPSG:26986)         
+
+        #ESRI WKT for Massachusetts state plane, mainland (EPSG:26986)
         prj['26986'] = "PROJCS['NAD_1983_StatePlane_Massachusetts_Mainland_FIPS_2001',"\
              "GEOGCS['GCS_North_American_1983',DATUM['D_North_American_1983',"\
              "SPHEROID['GRS_1980',6378137.0,298.257222101]],"\
@@ -269,22 +269,22 @@ class Dap2tin(object):
         nc = netCDF4.Dataset(url)
         x = nc.variables['lon'][:]
         y = nc.variables['lat'][:]
-        
+
         # determine time step from [year,month,day,hour]
         times = nc.variables['time']
         start = dt.datetime(iyear,imonth,iday,ihour)
         itime = netCDF4.date2index(start,times,select='nearest')
         arcpy.AddMessage("Reading time step %d" % itime)
-        
+
         # read connectivity array
         nv = nc.variables['nv'][:,:]
         nv=nv.T
-        
+
         # convert Lon/Lat to Mass State Plane using PyProj(Proj4)
         p1 = pyproj.Proj(init='epsg:4326')   # geographic WGS84
-        p2 = pyproj.Proj(init='epsg:26986') # Mass State Plane   
+        p2 = pyproj.Proj(init='epsg:26986') # Mass State Plane
         x,y = pyproj.transform(p1,p2,x,y)
-        
+
         # read data at nodes for selected variable
         # handle 1D, 2D, and 3D variables
         hvar = nc.variables[dataset_var]
@@ -316,9 +316,9 @@ class Dap2tin(object):
 
         DefineProjectionForTin(outTin,prj['26986'])
         arcpy.AddMessage(arcpy.GetMessages())
-        #arcpy.DefineProjection_management(outTin,dataPrj) # not working!        
+        #arcpy.DefineProjection_management(outTin,dataPrj) # not working!
         return
-        
+
 
 
 
