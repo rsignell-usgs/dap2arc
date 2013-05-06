@@ -188,7 +188,8 @@ class Dap2tin(object):
 
 
         # set location of layer files
-        layer_dir = 'c:/users/rsignell/documents/github/dap2arc/'
+        current_dir = os.path.dirname(__file__)
+        layer_dir = os.path.join(current_dir, 'layer')
         if dataset_var.value == "temp":
             outTin.symbology = layer_dir + 'temperature.lyr'
         elif dataset_var.value == "salinity":
