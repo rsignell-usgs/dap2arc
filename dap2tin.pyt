@@ -183,7 +183,7 @@ class Dap2tin(object):
             datatype="TIN",
             parameterType="Required",
             direction="Output")
-	    # set default name of output TIN
+        # set default name of output TIN
         outTin.value = 'c:/rps/python/tins/necofs'
 
 
@@ -200,18 +200,18 @@ class Dap2tin(object):
 
         return [url, dataset_var, iyear,imonth,iday,ihour, klev, outTin]
 
-	def isLicensed(self):
-		"""LandXMLToTin_3d used in this routine requires the ArcGIS 3D Analyst extension
-		to be available."""
-		try:
-			if arcpy.CheckExtension("3D") == "Available":
-				arcpy.CheckOutExtension("3D")
-			else:
-				raise Exception
-		except:
-			return False # tool cannot be executed
+    def isLicensed(self):
+        """LandXMLToTin_3d used in this routine requires the ArcGIS 3D Analyst extension
+        to be available."""
+        try:
+            if arcpy.CheckExtension("3D") == "Available":
+                arcpy.CheckOutExtension("3D")
+            else:
+                raise Exception
+        except:
+            return False # tool cannot be executed
 
-		return True # tool can be executed
+        return True # tool can be executed
 
     def updateParameters(self, parameters):
         """Modify the values and properties of parameters before internal
