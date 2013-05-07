@@ -5,6 +5,7 @@ import os
 import netCDF4
 import numpy as np
 import arcpy
+import datetime
 
 # mean precip over specified bounding box, start and stop time
 def mean_precip(nc,bbox=None,start=None,stop=None):
