@@ -2,9 +2,13 @@ import arcpy
 import os
 import netCDF4
 import numpy as np
-import pyproj
 import datetime as dt
 import shutil
+try:
+    import pyproj
+    pyproj_enabled = True
+except ImportError:
+    pyproj_enabled = False
 
 def DefineProjectionForTin(tin,prj):
     '''Workaround for Arc bug - define a projection for a TIN
@@ -183,12 +187,13 @@ class Dap2tin(object):
             datatype="TIN",
             parameterType="Required",
             direction="Output")
-	    # set default name of output TIN
+        # set default name of output TIN
         outTin.value = 'c:/rps/python/tins/necofs'
 
 
         # set location of layer files
-        layer_dir = 'c:/users/rsignell/documents/github/dap2arc/'
+        current_dir = os.path.dirname(__file__)
+        layer_dir = os.path.join(current_dir, 'layer')
         if dataset_var.value == "temp":
             outTin.symbology = layer_dir + 'temperature.lyr'
         elif dataset_var.value == "salinity":
@@ -200,18 +205,18 @@ class Dap2tin(object):
 
         return [url, dataset_var, iyear,imonth,iday,ihour, klev, outTin]
 
-	def isLicensed(self):
-		"""LandXMLToTin_3d used in this routine requires the ArcGIS 3D Analyst extension
-		to be available."""
-		try:
-			if arcpy.CheckExtension("3D") == "Available":
-				arcpy.CheckOutExtension("3D")
-			else:
-				raise Exception
-		except:
-			return False # tool cannot be executed
+    def isLicensed(self):
+        """LandXMLToTin_3d used in this routine requires the ArcGIS 3D Analyst extension
+        to be available."""
+        try:
+            if arcpy.CheckExtension("3D") == "Available":
+                arcpy.CheckOutExtension("3D")
+            else:
+                raise Exception
+        except:
+            return False # tool cannot be executed
 
-		return True # tool can be executed
+        return True # tool can be executed
 
     def updateParameters(self, parameters):
         """Modify the values and properties of parameters before internal
@@ -280,10 +285,19 @@ class Dap2tin(object):
         nv = nc.variables['nv'][:,:]
         nv=nv.T
 
-        # convert Lon/Lat to Mass State Plane using PyProj(Proj4)
-        p1 = pyproj.Proj(init='epsg:4326')   # geographic WGS84
-        p2 = pyproj.Proj(init='epsg:26986') # Mass State Plane
-        x,y = pyproj.transform(p1,p2,x,y)
+        # convert Lon/Lat to Mass State Plane
+        if pyproj_enabled:
+            # use PyProj(Proj4)
+            p1 = pyproj.Proj(init='epsg:4326')   # geographic WGS84
+            p2 = pyproj.Proj(init='epsg:26986') # Mass State Plane
+            x,y = pyproj.transform(p1,p2,x,y)
+        else:
+            for i in range(len(x)):
+                # create a point; cast to float as Point doesn't know about numpy types
+                point = arcpy.Point(float(x[i]), float(y[i]))
+                point_geom = arcpy.PointGeometry(point, prj['4326'])
+                proj_point = point_geom.projectAs(prj['26986'])
+                (x[i], y[i]) = (proj_point.firstPoint.X, proj_point.firstPoint.Y)
 
         # read data at nodes for selected variable
         # handle 1D, 2D, and 3D variables
