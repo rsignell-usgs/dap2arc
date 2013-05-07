@@ -4,6 +4,11 @@ import netCDF4
 import numpy as np
 import datetime as dt
 import shutil
+try:
+    import pyproj
+    pyproj_enabled = True
+except ImportError:
+    pyproj_enabled = False
 
 def DefineProjectionForTin(tin,prj):
     '''Workaround for Arc bug - define a projection for a TIN
@@ -281,18 +286,18 @@ class Dap2tin(object):
         nv=nv.T
 
         # convert Lon/Lat to Mass State Plane
-        for i in range(len(x)):
-            # create a point; cast to float as Point doesn't know about numpy types
-            point = arcpy.Point(float(x[i]), float(y[i]))
-            point_geom = arcpy.PointGeometry(point, prj['4326'])
-            proj_point = point_geom.projectAs(prj['26986'])
-            (x[i], y[i]) = (proj_point.firstPoint.X, proj_point.firstPoint.Y)
-        """ 
-        # convert Lon/Lat to Mass State Plane using PyProj(Proj4)
-        p1 = pyproj.Proj(init='epsg:4326')   # geographic WGS84
-        p2 = pyproj.Proj(init='epsg:26986') # Mass State Plane
-        x,y = pyproj.transform(p1,p2,x,y)
-        """
+        if pyproj_enabled:
+            # use PyProj(Proj4)
+            p1 = pyproj.Proj(init='epsg:4326')   # geographic WGS84
+            p2 = pyproj.Proj(init='epsg:26986') # Mass State Plane
+            x,y = pyproj.transform(p1,p2,x,y)
+        else:
+            for i in range(len(x)):
+                # create a point; cast to float as Point doesn't know about numpy types
+                point = arcpy.Point(float(x[i]), float(y[i]))
+                point_geom = arcpy.PointGeometry(point, prj['4326'])
+                proj_point = point_geom.projectAs(prj['26986'])
+                (x[i], y[i]) = (proj_point.firstPoint.X, proj_point.firstPoint.Y)
 
         # read data at nodes for selected variable
         # handle 1D, 2D, and 3D variables
