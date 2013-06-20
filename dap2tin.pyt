@@ -97,6 +97,8 @@ class Dap2tin(object):
         self.label = "Dap2tin"
         self.description = "Access data from the FVCOM Ocean Model via DAP and return a TIN"
         self.canRunInBackground = True
+        self.url = None
+        self.dataset = None
 
     def getParameterInfo(self):
         """Define parameter definitions"""
@@ -222,6 +224,21 @@ class Dap2tin(object):
         """Modify the values and properties of parameters before internal
         validation is performed.  This method is called whenever a parameter
         has been changed."""
+        url = parameters[0]
+        variable = parameters[1]
+
+        if url.value is not None and self.url != url.value:
+            self.url = url.value
+            try:
+                self.dataset = netCDF4.Dataset(self.url, filter_out_nd_coordinates=True)
+            except:
+                arcpy.AddError("Unable to open NetCDF source: {}".format(self.url))
+                return
+               
+            var_names = list(self.dataset.variables.keys())
+            parameters[1].filter.list = var_names
+            if variable.value not in var_names:
+                parameters[1].value = var_names[0]
         return
 
     def updateMessages(self, parameters):
