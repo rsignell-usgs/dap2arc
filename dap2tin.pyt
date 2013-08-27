@@ -96,7 +96,7 @@ class Dap2tin(object):
         """Define the tool (tool name is the name of the class)."""
         self.label = "Dap2tin"
         self.description = "Access data from the FVCOM Ocean Model via DAP and return a TIN"
-        self.canRunInBackground = True
+        self.canRunInBackground = False
         self.url = None
         self.dataset = None
 
