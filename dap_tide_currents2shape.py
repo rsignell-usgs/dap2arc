@@ -21,8 +21,8 @@ import shapefile
 #######################################
 # MAKE EDITS HERE
 
-file_poly='c:/rps/python/shapefiles/tidal_current_poly'
-file_point='c:/rps/python/shapefiles/tidal_current_point'
+file_poly='c:/rps/python/shapefiles/massbay_mean_bottom_current_poly'
+file_point='c:/rps/python/shapefiles/massbay_mean_bottom_current_point'
 
 # Specify the URL
 
@@ -36,6 +36,8 @@ file_point='c:/rps/python/shapefiles/tidal_current_point'
 
 # MASSBAY: mass bay model
 url='http://www.smast.umassd.edu:8080/thredds/dodsC/FVCOM/NECOFS/Forecasts/NECOFS_FVCOM_OCEAN_MASSBAY_FORECAST.nc'
+#massbay mean over 236 hours (19.0 tidal cycles)
+url='http://www.smast.umassd.edu:8080/thredds/dodsC/models/fvcom/derived/nc4/massbay_mean.nc'
 
 # GOM3 wave forecast
 #url='http://www.smast.umassd.edu:8080/thredds/dodsC/FVCOM/NECOFS/Forecasts/NECOFS_WAVE_FORECAST.nc'
@@ -68,8 +70,8 @@ h=nc.variables['h'][:]
 hours_from_now=0   # Examples: 0=>nowcast, 3 => forecast 3 hours from now, etc. 
 date=datetime.datetime.utcnow()+datetime.timedelta(0,3600*hours_from_now)  
 #date=datetime.datetime(2011,9,9,17,00)  # specific time (UTC)
-tindex=netCDF4.date2index(date,nc.variables['time'],select='nearest')
-
+#tindex=netCDF4.date2index(date,nc.variables['time'],select='nearest')
+tindex=0
 # read water level at nodes at a specific time
 #z=nc.variables['zeta'][-1,:]   # -1 is the last time step of the forecast
 #z=nc.variables['zeta'][tindex,:]  # index for date specified above
@@ -84,7 +86,7 @@ tindex=netCDF4.date2index(date,nc.variables['time'],select='nearest')
 # (since depth and water level are defined at nodes)
 
 
-ilev=0  # [0] surface, [-1] bottom
+ilev=-1  # [0] surface, [-1] bottom
 u=nc.variables['u'][tindex,ilev,:]
 v=nc.variables['v'][tindex,ilev,:]
 ang=np.angle(u + v*1j)*180/np.pi
