@@ -99,6 +99,22 @@ class Dap2tin(object):
         self.canRunInBackground = False
         self.url = None
         self.dataset = None
+        self.cols = {
+            'url': 0,
+            'dataset_var': 1,
+            'iyear': 2,
+            'imonth': 3,
+            'iday': 4,
+            'ihour': 5,
+            'klev': 6,
+            'out_tin': 7
+        }
+        self.default_urls = ['http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/hindcasts/30yr_gom3/mean',
+        'http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/hindcasts/wave_gom3',
+        'http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/archives/necofs_gom3',
+        'http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/archives/necofs_mb',
+        'http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/necofs/forecasts/necofs_gom3_forecast.nc',
+        'http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/necofs/forecasts/necofs_fvcom_ocean_massbay_forecast.nc']
 
     def getParameterInfo(self):
         """Define parameter definitions"""
@@ -113,12 +129,7 @@ class Dap2tin(object):
         # set default value to 30 year hindcast monthly mean dataset
         url.value = 'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/hindcasts/30yr_gom3/mean'
         url.filter.type = "ValueList"
-        url.filter.list = ['http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/hindcasts/30yr_gom3/mean',
-        'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/hindcasts/wave_gom3',
-        'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/archives/necofs_gom3',
-        'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/archives/necofs_mb',
-        'http://www.smast.umassd.edu:8080/thredds/dodsC/FVCOM/NECOFS/Forecasts/NECOFS_GOM3_FORECAST.nc',
-        'http://www.smast.umassd.edu:8080/thredds/dodsC/FVCOM/NECOFS/Forecasts/NECOFS_FVCOM_OCEAN_MASSBAY_FORECAST.nc']
+        url.filter.list = self.default_urls
 
         # Parameter: Variable name
         dataset_var = arcpy.Parameter(
