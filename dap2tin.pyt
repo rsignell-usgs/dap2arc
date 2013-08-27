@@ -194,15 +194,14 @@ class Dap2tin(object):
         klev.value = 0
 
         # Parameter: Output Tin
-        outTin = arcpy.Parameter(
+        out_tin = arcpy.Parameter(
             displayName="Output TIN",
             name="outTin",
             datatype="TIN",
             parameterType="Required",
             direction="Output")
         # set default name of output TIN
-        outTin.value = 'c:/rps/python/tins/necofs'
-
+        out_tin.value = 'c:/rps/python/tins/necofs'
 
         # set location of layer files
         current_dir = os.path.dirname(__file__)
@@ -214,9 +213,10 @@ class Dap2tin(object):
         elif dataset_var.value == "hs":
             outTin.symbology = layer_dir + 'wave_height.lyr'
         else:
-            outTin.symbology = layer_dir + 'temperature.lyr'
+            symbology_file = 'temperature.lyr'
+        out_tin.symbology = os.path.join(layer_dir, symbology_file) 
 
-        return [url, dataset_var, iyear,imonth,iday,ihour, klev, outTin]
+        return [url, dataset_var, iyear, imonth, iday, ihour, klev, out_tin]
 
     def isLicensed(self):
         """LandXMLToTin_3d used in this routine requires the ArcGIS 3D Analyst extension
@@ -266,8 +266,8 @@ class Dap2tin(object):
         ihour = int(parameters[5].valueAsText)
 
         klev = int(parameters[6].valueAsText)
-        outTin = parameters[7].valueAsText
-
+        out_tin = parameters[7].valueAsText
+ 
         # create dictionary for WKT strings
         prj={}
         #ESRI WKT for Geographic, WGS84 (EPSG:4326)
@@ -291,8 +291,8 @@ class Dap2tin(object):
         arcpy.env.outputCoordinateSystem = prj['26986']
 
         # output location
-        outputFolder= os.path.dirname(outTin)
-        outputBase = os.path.basename(outTin)
+        outputFolder = os.path.dirname(out_tin)
+        outputBase = os.path.basename(out_tin)
         arcpy.env.workspace = outputFolder
         os.chdir(arcpy.env.workspace)
 
