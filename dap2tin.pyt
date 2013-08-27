@@ -298,9 +298,17 @@ class Dap2tin(object):
 
         # determine time step from [year,month,day,hour]
         times = nc.variables['time']
-        start = dt.datetime(iyear,imonth,iday,ihour)
-        itime = netCDF4.date2index(start,times,select='nearest')
+        mytime = dt.datetime(iyear,imonth,iday,ihour)
+        itime = netCDF4.date2index(mytime,times,select='nearest')
         arcpy.AddMessage("Reading time step %d" % itime)
+        
+        # get first (0) and last (-1) time values of dataset and convert to datestamps
+        dstart = netCDF4.num2date(times[0],times.units)
+        dstop = netCDF4.num2date(times[-1],times.units)
+
+        arcpy.AddMessage('dataset start: %s' % dstart.strftime('%Y-%b-%d %H:%M:%S'))
+        arcpy.AddMessage('dataset stop: %s' % dstop.strftime('%Y-%b-%d %H:%M:%S'))
+
 
         # read connectivity array
         nv = nc.variables['nv'][:,:]
