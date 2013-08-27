@@ -107,7 +107,8 @@ class Dap2tin(object):
             'iday': 4,
             'ihour': 5,
             'klev': 6,
-            'out_tin': 7
+            'sr' : 7,
+            'out_tin': 8
         }
         self.default_urls = ['http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/hindcasts/30yr_gom3/mean',
         'http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/hindcasts/wave_gom3',
@@ -193,6 +194,15 @@ class Dap2tin(object):
         # set default value to surface layer
         klev.value = 0
 
+        sr = arcpy.Parameter(
+            displayName="Spatial Reference",
+            name="sr",
+            datatype="GPCoordinateSystem",
+            parameterType="Required",
+            direction="Input")
+        # default to USGS Mass Plane for now; could also use actual data projection.
+        sr.value = arcpy.SpatialReference(26986).factoryCode
+
         # Parameter: Output Tin
         out_tin = arcpy.Parameter(
             displayName="Output TIN",
@@ -214,8 +224,8 @@ class Dap2tin(object):
         else:
             symbology_file = 'temperature.lyr'
         out_tin.symbology = os.path.join(layer_dir, symbology_file) 
-
-        return [url, dataset_var, iyear, imonth, iday, ihour, klev, out_tin]
+        
+        return [url, dataset_var, iyear, imonth, iday, ihour, klev, sr, out_tin]
 
     def isLicensed(self):
         """LandXMLToTin_3d used in this routine requires the ArcGIS 3D Analyst extension
@@ -265,31 +275,13 @@ class Dap2tin(object):
         imonth = int(parameters[3].valueAsText)
         iday = int(parameters[4].valueAsText)
         ihour = int(parameters[5].valueAsText)
-
         klev = int(parameters[6].valueAsText)
-        out_tin = parameters[7].valueAsText
- 
-        # create dictionary for WKT strings
-        prj={}
-        #ESRI WKT for Geographic, WGS84 (EPSG:4326)
-        prj['4326'] = "GEOGCS['GCS_WGS_1984',DATUM['D_WGS_1984',"\
-             "SPHEROID['WGS_1984',6378137.0,298.257223563]],"\
-             "PRIMEM['Greenwich',0.0],UNIT['Degree',0.0174532925199433]]"
+        sr_string = parameters[7].valueAsText
+        out_tin = parameters[8].valueAsText
 
-        #ESRI WKT for Massachusetts state plane, mainland (EPSG:26986)
-        prj['26986'] = "PROJCS['NAD_1983_StatePlane_Massachusetts_Mainland_FIPS_2001',"\
-             "GEOGCS['GCS_North_American_1983',DATUM['D_North_American_1983',"\
-             "SPHEROID['GRS_1980',6378137.0,298.257222101]],"\
-             "PRIMEM['Greenwich',0.0],UNIT['Degree',0.0174532925199433]],"\
-             "PROJECTION['Lambert_Conformal_Conic'],"\
-             "PARAMETER['False_Easting',200000.0],"\
-             "PARAMETER['False_Northing',750000.0],"\
-             "PARAMETER['Central_Meridian',-71.5],"\
-             "PARAMETER['Standard_Parallel_1',41.71666666666667],"\
-             "PARAMETER['Standard_Parallel_2',42.68333333333333],"\
-             "PARAMETER['Latitude_Of_Origin',41.0],UNIT['Meter',1.0]]"
-
-        arcpy.env.outputCoordinateSystem = prj['26986']
+        sr = arcpy.SpatialReference()
+        sr.loadFromString(sr_string)
+        arcpy.env.outputCoordinateSystem = sr
 
         # output location
         outputFolder = os.path.dirname(out_tin)
@@ -318,14 +310,21 @@ class Dap2tin(object):
         if pyproj_enabled:
             # use PyProj(Proj4)
             p1 = pyproj.Proj(init='epsg:4326')   # geographic WGS84
-            p2 = pyproj.Proj(init='epsg:26986') # Mass State Plane
+            try:
+                # factory code / EPSG relationship documented at:
+                #  http://gis.stackexchange.com/q/18651/143
+                epsg_code = sr.factoryCode
+                p2 = pyproj.Proj(init='epsg:{0}'.format(epsg_code))
+            except:
+                arcpy.AddError("Unable to use PyProj to reproject to EPSG {0}".format(epsg_code))
+                sys.exit()
             x,y = pyproj.transform(p1,p2,x,y)
         else:
             for i in range(len(x)):
                 # create a point; cast to float as Point doesn't know about numpy types
                 point = arcpy.Point(float(x[i]), float(y[i]))
-                point_geom = arcpy.PointGeometry(point, prj['4326'])
-                proj_point = point_geom.projectAs(prj['26986'])
+                point_geom = arcpy.PointGeometry(point, arcpy.SpatialReference(4326))
+                proj_point = point_geom.projectAs(sr)
                 (x[i], y[i]) = (proj_point.firstPoint.X, proj_point.firstPoint.Y)
 
         # read data at nodes for selected variable
