@@ -356,9 +356,8 @@ class Dap2tin(object):
         #params = arcpy.GetParameterInfo()
         #arcpy.AddMessage("parameter info %s" % params)
 
-        DefineProjectionForTin(outTin,prj['26986'])
+        DefineProjectionForTin(out_tin,sr)
         arcpy.AddMessage(arcpy.GetMessages())
-        #arcpy.DefineProjection_management(outTin,dataPrj) # not working!
         return
 
 
