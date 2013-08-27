@@ -247,6 +247,8 @@ class Dap2tin(object):
                
             var_names = list(self.dataset.variables.keys())
             parameters[1].filter.list = var_names
+            # add back the new url to to filter list
+            parameters[0].filter.list = [self.url] + self.default_urls
             if variable.value not in var_names:
                 parameters[1].value = var_names[0]
         return
