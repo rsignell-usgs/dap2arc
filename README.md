@@ -12,3 +12,20 @@ ArcGIS 10.1 (The Python Toolbox was introduced with 10.1).
 NetCDF4-Python:  This module is now distributed by ESRI as part of the Multidimensional Supplemental Tools package:
 http://esriurl.com/MultidimensionSupplementalTools
 
+##Usage
+
+The dap2arc tools are either python scripts (ending in .py) or python toolboxes (ending in .pyt)
+
+Python scripts can be executed by going to Geoprocessing=>Python and cut-and-pasting the commands in the scripts into the Python command window. 
+
+Python toolboxes can be executed by using ArcToolbox to navigate to the appropriate directory and double clicking the python toolbox file, which will open an interface. 
+
+##Tutorial
+I made a 12 minute video tutorial(no scripting -- stumbling a little...) at:
+https://www.youtube.com/watch?v=OccLjc4M2Tg
+
+best to watch it in HD:
+https://www.youtube.com/v/OccLjc4M2Tg
+
+Good Luck,
+Rich

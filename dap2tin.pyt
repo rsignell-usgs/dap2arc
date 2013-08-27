@@ -96,9 +96,26 @@ class Dap2tin(object):
         """Define the tool (tool name is the name of the class)."""
         self.label = "Dap2tin"
         self.description = "Access data from the FVCOM Ocean Model via DAP and return a TIN"
-        self.canRunInBackground = True
+        self.canRunInBackground = False
         self.url = None
         self.dataset = None
+        self.cols = {
+            'url': 0,
+            'dataset_var': 1,
+            'iyear': 2,
+            'imonth': 3,
+            'iday': 4,
+            'ihour': 5,
+            'klev': 6,
+            'sr' : 7,
+            'out_tin': 8
+        }
+        self.default_urls = ['http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/hindcasts/30yr_gom3/mean',
+        'http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/hindcasts/wave_gom3',
+        'http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/archives/necofs_gom3',
+        'http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/archives/necofs_mb',
+        'http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/necofs/forecasts/necofs_gom3_forecast.nc',
+        'http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/necofs/forecasts/necofs_fvcom_ocean_massbay_forecast.nc']
 
     def getParameterInfo(self):
         """Define parameter definitions"""
@@ -113,12 +130,7 @@ class Dap2tin(object):
         # set default value to 30 year hindcast monthly mean dataset
         url.value = 'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/hindcasts/30yr_gom3/mean'
         url.filter.type = "ValueList"
-        url.filter.list = ['http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/hindcasts/30yr_gom3/mean',
-        'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/hindcasts/wave_gom3',
-        'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/archives/necofs_gom3',
-        'http://www.smast.umassd.edu:8080/thredds/dodsC/fvcom/archives/necofs_mb',
-        'http://www.smast.umassd.edu:8080/thredds/dodsC/FVCOM/NECOFS/Forecasts/NECOFS_GOM3_FORECAST.nc',
-        'http://www.smast.umassd.edu:8080/thredds/dodsC/FVCOM/NECOFS/Forecasts/NECOFS_FVCOM_OCEAN_MASSBAY_FORECAST.nc']
+        url.filter.list = self.default_urls
 
         # Parameter: Variable name
         dataset_var = arcpy.Parameter(
@@ -182,30 +194,38 @@ class Dap2tin(object):
         # set default value to surface layer
         klev.value = 0
 
+        sr = arcpy.Parameter(
+            displayName="Spatial Reference",
+            name="sr",
+            datatype="GPCoordinateSystem",
+            parameterType="Required",
+            direction="Input")
+        # default to USGS Mass Plane for now; could also use actual data projection.
+        sr.value = arcpy.SpatialReference(26986).factoryCode
+
         # Parameter: Output Tin
-        outTin = arcpy.Parameter(
+        out_tin = arcpy.Parameter(
             displayName="Output TIN",
             name="outTin",
             datatype="TIN",
             parameterType="Required",
             direction="Output")
         # set default name of output TIN
-        outTin.value = 'c:/rps/python/tins/necofs'
-
+        out_tin.value = 'c:/rps/python/tins/necofs'
 
         # set location of layer files
         current_dir = os.path.dirname(__file__)
-        layer_dir = os.path.join(current_dir, 'layer')
-        if dataset_var.value == "temp":
-            outTin.symbology = layer_dir + 'temperature.lyr'
-        elif dataset_var.value == "salinity":
-            outTin.symbology = layer_dir + 'salinity.lyr'
-        elif dataset_var.value == "hs":
-            outTin.symbology = layer_dir + 'wave_height.lyr'
+        layer_dir = os.path.join(current_dir, 'layers')
+        layers = {"temp": 'temperature.lyr',
+                  "salinity": 'salinity.lyr',
+                  "hs" : 'wave_height.lyr'}
+        if dataset_var.value in layers:
+            symbology_file = layers[dataset_var.value]
         else:
-            outTin.symbology = layer_dir + 'temperature.lyr'
-
-        return [url, dataset_var, iyear,imonth,iday,ihour, klev, outTin]
+            symbology_file = 'temperature.lyr'
+        out_tin.symbology = os.path.join(layer_dir, symbology_file) 
+        
+        return [url, dataset_var, iyear, imonth, iday, ihour, klev, sr, out_tin]
 
     def isLicensed(self):
         """LandXMLToTin_3d used in this routine requires the ArcGIS 3D Analyst extension
@@ -237,6 +257,8 @@ class Dap2tin(object):
                
             var_names = list(self.dataset.variables.keys())
             parameters[1].filter.list = var_names
+            # add back the new url to to filter list
+            parameters[0].filter.list = [self.url] + self.default_urls
             if variable.value not in var_names:
                 parameters[1].value = var_names[0]
         return
@@ -253,35 +275,17 @@ class Dap2tin(object):
         imonth = int(parameters[3].valueAsText)
         iday = int(parameters[4].valueAsText)
         ihour = int(parameters[5].valueAsText)
-
         klev = int(parameters[6].valueAsText)
-        outTin = parameters[7].valueAsText
+        sr_string = parameters[7].valueAsText
+        out_tin = parameters[8].valueAsText
 
-        # create dictionary for WKT strings
-        prj={}
-        #ESRI WKT for Geographic, WGS84 (EPSG:4326)
-        prj['4326'] = "GEOGCS['GCS_WGS_1984',DATUM['D_WGS_1984',"\
-             "SPHEROID['WGS_1984',6378137.0,298.257223563]],"\
-             "PRIMEM['Greenwich',0.0],UNIT['Degree',0.0174532925199433]]"
-
-        #ESRI WKT for Massachusetts state plane, mainland (EPSG:26986)
-        prj['26986'] = "PROJCS['NAD_1983_StatePlane_Massachusetts_Mainland_FIPS_2001',"\
-             "GEOGCS['GCS_North_American_1983',DATUM['D_North_American_1983',"\
-             "SPHEROID['GRS_1980',6378137.0,298.257222101]],"\
-             "PRIMEM['Greenwich',0.0],UNIT['Degree',0.0174532925199433]],"\
-             "PROJECTION['Lambert_Conformal_Conic'],"\
-             "PARAMETER['False_Easting',200000.0],"\
-             "PARAMETER['False_Northing',750000.0],"\
-             "PARAMETER['Central_Meridian',-71.5],"\
-             "PARAMETER['Standard_Parallel_1',41.71666666666667],"\
-             "PARAMETER['Standard_Parallel_2',42.68333333333333],"\
-             "PARAMETER['Latitude_Of_Origin',41.0],UNIT['Meter',1.0]]"
-
-        arcpy.env.outputCoordinateSystem = prj['26986']
+        sr = arcpy.SpatialReference()
+        sr.loadFromString(sr_string)
+        arcpy.env.outputCoordinateSystem = sr
 
         # output location
-        outputFolder= os.path.dirname(outTin)
-        outputBase = os.path.basename(outTin)
+        outputFolder = os.path.dirname(out_tin)
+        outputBase = os.path.basename(out_tin)
         arcpy.env.workspace = outputFolder
         os.chdir(arcpy.env.workspace)
 
@@ -306,14 +310,21 @@ class Dap2tin(object):
         if pyproj_enabled:
             # use PyProj(Proj4)
             p1 = pyproj.Proj(init='epsg:4326')   # geographic WGS84
-            p2 = pyproj.Proj(init='epsg:26986') # Mass State Plane
+            try:
+                # factory code / EPSG relationship documented at:
+                #  http://gis.stackexchange.com/q/18651/143
+                epsg_code = sr.factoryCode
+                p2 = pyproj.Proj(init='epsg:{0}'.format(epsg_code))
+            except:
+                arcpy.AddError("Unable to use PyProj to reproject to EPSG {0}".format(epsg_code))
+                sys.exit()
             x,y = pyproj.transform(p1,p2,x,y)
         else:
             for i in range(len(x)):
                 # create a point; cast to float as Point doesn't know about numpy types
                 point = arcpy.Point(float(x[i]), float(y[i]))
-                point_geom = arcpy.PointGeometry(point, prj['4326'])
-                proj_point = point_geom.projectAs(prj['26986'])
+                point_geom = arcpy.PointGeometry(point, arcpy.SpatialReference(4326))
+                proj_point = point_geom.projectAs(sr)
                 (x[i], y[i]) = (proj_point.firstPoint.X, proj_point.firstPoint.Y)
 
         # read data at nodes for selected variable
