@@ -205,13 +205,12 @@ class Dap2tin(object):
 
         # set location of layer files
         current_dir = os.path.dirname(__file__)
-        layer_dir = os.path.join(current_dir, 'layer')
-        if dataset_var.value == "temp":
-            outTin.symbology = layer_dir + 'temperature.lyr'
-        elif dataset_var.value == "salinity":
-            outTin.symbology = layer_dir + 'salinity.lyr'
-        elif dataset_var.value == "hs":
-            outTin.symbology = layer_dir + 'wave_height.lyr'
+        layer_dir = os.path.join(current_dir, 'layers')
+        layers = {"temp": 'temperature.lyr',
+                  "salinity": 'salinity.lyr',
+                  "hs" : 'wave_height.lyr'}
+        if dataset_var.value in layers:
+            symbology_file = layers[dataset_var.value]
         else:
             symbology_file = 'temperature.lyr'
         out_tin.symbology = os.path.join(layer_dir, symbology_file) 
