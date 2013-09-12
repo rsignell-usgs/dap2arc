@@ -114,7 +114,7 @@ class Dap2tin(object):
         'http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/hindcasts/wave_gom3',
         'http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/archives/necofs_gom3',
         'http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/archives/necofs_mb',
-        'http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/necofs/forecasts/necofs_gom3_forecast.nc',
+        'http://www.smast.umassd.edu:8080/thredds/dodsC/FVCOM/NECOFS/Forecasts/NECOFS_GOM3_FORECAST.nc',
         'http://www.smast.umassd.edu:8080/thredds/dodsc/fvcom/necofs/forecasts/necofs_fvcom_ocean_massbay_forecast.nc']
 
     def getParameterInfo(self):
@@ -308,7 +308,7 @@ class Dap2tin(object):
 
         arcpy.AddMessage('dataset start: %s' % dstart.strftime('%Y-%b-%d %H:%M:%S'))
         arcpy.AddMessage('dataset stop: %s' % dstop.strftime('%Y-%b-%d %H:%M:%S'))
-
+        arcpy.AddMessage("Reading time step %d" % itime)
 
         # read connectivity array
         nv = nc.variables['nv'][:,:]
@@ -366,6 +366,7 @@ class Dap2tin(object):
 
         DefineProjectionForTin(out_tin,sr)
         arcpy.AddMessage(arcpy.GetMessages())
+        #arcpy.DefineProjection_management(out_tin,dataPrj) # not working!
         return
 
 
