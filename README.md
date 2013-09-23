@@ -21,7 +21,7 @@ Python scripts can be executed by going to Geoprocessing=>Python and cut-and-pas
 Python toolboxes can be executed by using ArcToolbox to navigate to the appropriate directory and double clicking the python toolbox file, which will open an interface. 
 
 ##Tutorial
-I made a 12 minute video tutorial(no scripting -- stumbling a little...) at:
+I made a 12 minute video tutorial at:
 https://www.youtube.com/watch?v=OccLjc4M2Tg
 
 best to watch it in HD:
