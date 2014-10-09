@@ -7,7 +7,7 @@ This project is developing tools and techniques for ArcGIS users to remotely acc
 
 ##Requirements
 
-ArcGIS 10.1 (The Python Toolbox was introduced with 10.1).  
+ArcGIS 10.1+ (The Python Toolbox was introduced with 10.1).  
 
 NetCDF4-Python:  This module is now distributed by ESRI as part of the Multidimensional Supplemental Tools package:
 http://esriurl.com/MultidimensionSupplementalTools
